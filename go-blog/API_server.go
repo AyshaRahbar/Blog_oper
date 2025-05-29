@@ -132,6 +132,7 @@ func main() {
 		fmt.Println("1. Create new post")
 		fmt.Println("2. View posts")
 		fmt.Println("3. React to a post")
+		fmt.Println("4. Delete a post")
 
 		var choice int
 		fmt.Print("Choose an option: ")
