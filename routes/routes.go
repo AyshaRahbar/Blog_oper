@@ -8,7 +8,7 @@ import (
 func SetupRoutes(postHandler *handlers.PostHandler) *gin.Engine {
 	router := gin.Default()
 	api := router.Group("/api")
-	{
+	{ //demo
 		api.GET("/posts", postHandler.ListPosts)
 		api.POST("/posts", postHandler.CreatePost)
 		api.POST("/posts/:id/reaction", postHandler.AddReaction)
