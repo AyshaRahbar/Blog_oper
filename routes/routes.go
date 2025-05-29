@@ -2,7 +2,6 @@ package routes
 
 import (
 	"go-blog/handlers"
-
 	"github.com/gin-gonic/gin"
 )
 
