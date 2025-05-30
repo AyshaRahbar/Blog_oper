@@ -8,8 +8,8 @@ import (
 type PostService interface {
 	GetAllPosts() []models.Post
 	CreatePost(post *models.Post) *models.Post
-	UpdatePost(id int, post *models.Post) *models.Post
-	DeletePost(id int)
+	UpdatePost(id string, post *models.Post) *models.Post
+	DeletePost(id string)
 }
 
 type postService struct {
@@ -28,12 +28,11 @@ func (s *postService) CreatePost(post *models.Post) *models.Post {
 	return s.repo.CreatePost(post)
 }
 
-func (s *postService) UpdatePost(id int, post *models.Post) *models.Post {
-	post.ID = id
-	updatedPost, _ := s.repo.Update(post)
+func (s *postService) UpdatePost(id string, post *models.Post) *models.Post {
+	updatedPost, _ := s.repo.Update(id, post)
 	return updatedPost
 }
 
-func (s *postService) DeletePost(id int) {
+func (s *postService) DeletePost(id string) {
 	s.repo.DeletePost(id)
 }

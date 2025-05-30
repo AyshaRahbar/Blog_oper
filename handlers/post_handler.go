@@ -17,14 +17,8 @@ func NewPostHandler(service service.PostService) *PostHandler {
 }
 
 func (h *PostHandler) GetPosts(c *gin.Context) {
-	posts := h.service.GetPosts()
+	posts := h.service.GetAllPosts()
 	c.JSON(http.StatusOK, posts)
-}
-
-func (h *PostHandler) GetPostById(c *gin.Context) {
-	id := c.Param("id")
-	post := h.service.GetPost(id)
-	c.JSON(http.StatusOK, post)
 }
 
 func (h *PostHandler) CreatePost(c *gin.Context) {
@@ -38,8 +32,8 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 	id := c.Param("id")
 	var post models.Post
 	c.ShouldBindJSON(&post)
-	h.service.UpdatePost(id, &post)
-	c.JSON(http.StatusOK, post)
+	updatedPost := h.service.UpdatePost(id, &post)
+	c.JSON(http.StatusOK, updatedPost)
 }
 
 func (h *PostHandler) DeletePost(c *gin.Context) {

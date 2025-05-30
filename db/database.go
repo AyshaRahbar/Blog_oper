@@ -21,7 +21,6 @@ func InitDB() (*gorm.DB, error) {
 	if dbType == "postgres" {
 		db, err = initPostgreSQL()
 	} 
-
 	if err != nil {
 		return nil, err
 	}
