@@ -28,12 +28,6 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	c.JSON(http.StatusCreated, createdPost)
 }
 
-func (h *PostHandler) GetPost(c *gin.Context) {
-	id := c.Param("id")
-	post := h.service.GetPostByID(id)
-	c.JSON(http.StatusOK, post)
-}
-
 func (h *PostHandler) UpdatePost(c *gin.Context) {
 	id := c.Param("id")
 	var post models.Post
