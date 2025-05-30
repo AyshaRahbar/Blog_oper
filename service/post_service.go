@@ -7,7 +7,6 @@ import (
 
 type PostService interface {
 	GetAllPosts() []models.Post
-	GetPostByID(id string) *models.Post
 	CreatePost(post *models.Post) *models.Post
 	UpdatePost(id string, post *models.Post)
 	DeletePost(id string)
@@ -23,10 +22,6 @@ func NewPostService(repo repo.PostRepository) PostService {
 
 func (s *postService) GetAllPosts() []models.Post {
 	return s.repo.ListPosts()
-}
-
-func (s *postService) GetPostByID(id string) *models.Post {
-	return s.repo.GetByID(id)
 }
 
 func (s *postService) CreatePost(post *models.Post) *models.Post {
