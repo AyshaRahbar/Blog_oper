@@ -12,16 +12,17 @@ import (
 	"gorm.io/gorm"
 )
 
-func initPostgreSQL() (*gorm.DB, error) {
+func initPostgreSQL() *gorm.DB {
 	dsn := os.Getenv("DB_DSN")
 	if dsn == "" {
 		dsn = "host=localhost user=postgres password=postgres dbname=blogdb port=5432 sslmode=disable"
 	}
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, _ := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	return db
 }
 
 func main() {
-	db, _ := initPostgreSQL()
+	db := initPostgreSQL()
 	db.AutoMigrate(&models.Post{})
 
 	postRepo := repo.NewPostRepository(db)

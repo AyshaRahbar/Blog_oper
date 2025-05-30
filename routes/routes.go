@@ -12,7 +12,6 @@ func SetupRoutes(postHandler *handlers.PostHandler) *gin.Engine {
 	{
 		api.GET("/posts", postHandler.GetPosts)
 		api.POST("/posts", postHandler.CreatePost)
-		api.GET("/posts/:id", postHandler.GetPostById)
 		api.PUT("/posts/:id", postHandler.UpdatePost)
 		api.DELETE("/posts/:id", postHandler.DeletePost)
 	}

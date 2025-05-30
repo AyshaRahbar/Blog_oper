@@ -8,10 +8,10 @@ import (
 
 type PostRepository interface {
 	ListPosts() []models.Post
-	GetPost(postID string) *models.Post
+	GetPost(postID int) *models.Post
 	CreatePost(post *models.Post) *models.Post
-	Update(post *models.Post)
-	DeletePost(postID string)
+	Update(post *models.Post) (*models.Post, error)
+	DeletePost(postID int)
 }
 
 type postRepository struct {
@@ -28,21 +28,30 @@ func (r *postRepository) ListPosts() []models.Post {
 	return posts
 }
 
-func (r *postRepository) GetPost(postID string) *models.Post {
+func (r *postRepository) GetPost(postID int) *models.Post {
 	var post models.Post
 	r.db.Raw("SELECT * FROM posts WHERE id = ?", postID).Scan(&post)
 	return &post
 }
 
 func (r *postRepository) CreatePost(post *models.Post) *models.Post {
-	r.db.Create(post)
-	return post
+	var newPost models.Post
+	r.db.Raw("INSERT INTO posts (title, content) VALUES (?, ?) RETURNING *", post.Title, post.Content).Scan(&newPost)
+	return &newPost
 }
 
-func (r *postRepository) Update(post *models.Post) {
-	r.db.Exec("UPDATE posts SET title = ?, content = ? WHERE id = ?", post.Title, post.Content, post.ID)
+func (r *postRepository) Update(post *models.Post) (*models.Post, error) {
+	if err := r.db.Model(&models.Post{}).Where("id = ?", post.ID).Updates(models.Post{
+		Title:   post.Title,
+		Content: post.Content,
+	}).Error; err != nil {
+		return nil, err
+	}
+	var updatedPost models.Post
+	r.db.First(&updatedPost, post.ID)
+	return &updatedPost, nil
 }
 
-func (r *postRepository) DeletePost(postID string) {
+func (r *postRepository) DeletePost(postID int) {
 	r.db.Exec("DELETE FROM posts WHERE id = ?", postID)
 }
