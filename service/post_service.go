@@ -1,0 +1,42 @@
+package service
+
+import (
+	"go-blog/models"
+	"go-blog/repo"
+)
+
+type PostService interface {
+	GetAllPosts() []models.Post
+	GetPostByID(id string) *models.Post
+	CreatePost(post *models.Post) *models.Post
+	UpdatePost(id string, post *models.Post)
+	DeletePost(id string)
+}
+
+type postService struct {
+	repo repo.PostRepository
+}
+
+func NewPostService(repo repo.PostRepository) PostService {
+	return &postService{repo: repo}
+}
+
+func (s *postService) GetAllPosts() []models.Post {
+	return s.repo.ListPosts()
+}
+
+func (s *postService) GetPostByID(id string) *models.Post {
+	return s.repo.GetByID(id)
+}
+
+func (s *postService) CreatePost(post *models.Post) *models.Post {
+	return s.repo.CreatePost(post)
+}
+
+func (s *postService) UpdatePost(id string, post *models.Post) {
+	s.repo.Update(post)
+}
+
+func (s *postService) DeletePost(id string) {
+	s.repo.DeletePost(id)
+}
