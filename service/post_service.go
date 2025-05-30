@@ -6,7 +6,8 @@ import (
 )
 
 type PostService interface {
-	GetAllPosts() []models.Post
+	GetPosts() []models.Post
+	GetPost(id string) *models.Post
 	CreatePost(post *models.Post) *models.Post
 	UpdatePost(id string, post *models.Post)
 	DeletePost(id string)
@@ -20,8 +21,12 @@ func NewPostService(repo repo.PostRepository) PostService {
 	return &postService{repo: repo}
 }
 
-func (s *postService) GetAllPosts() []models.Post {
+func (s *postService) GetPosts() []models.Post {
 	return s.repo.ListPosts()
+}
+
+func (s *postService) GetPost(id string) *models.Post {
+	return s.repo.GetPost(id)
 }
 
 func (s *postService) CreatePost(post *models.Post) *models.Post {

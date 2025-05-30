@@ -17,8 +17,14 @@ func NewPostHandler(service service.PostService) *PostHandler {
 }
 
 func (h *PostHandler) GetPosts(c *gin.Context) {
-	posts := h.service.GetAllPosts()
+	posts := h.service.GetPosts()
 	c.JSON(http.StatusOK, posts)
+}
+
+func (h *PostHandler) GetPostById(c *gin.Context) {
+	id := c.Param("id")
+	post := h.service.GetPost(id)
+	c.JSON(http.StatusOK, post)
 }
 
 func (h *PostHandler) CreatePost(c *gin.Context) {

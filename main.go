@@ -27,7 +27,6 @@ func main() {
 	postRepo := repo.NewPostRepository(db)
 	postService := service.NewPostService(postRepo)
 	postHandler := handlers.NewPostHandler(postService)
-
 	r := routes.SetupRoutes(postHandler)
 	r.Run(":8080")
 }

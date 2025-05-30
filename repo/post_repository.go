@@ -8,6 +8,7 @@ import (
 
 type PostRepository interface {
 	ListPosts() []models.Post
+	GetPost(postID string) *models.Post
 	CreatePost(post *models.Post) *models.Post
 	Update(post *models.Post)
 	DeletePost(postID string)
@@ -26,6 +27,13 @@ func (r *postRepository) ListPosts() []models.Post {
 	r.db.Raw("SELECT * FROM posts").Scan(&posts)
 	return posts
 }
+
+func (r *postRepository) GetPost(postID string) *models.Post {
+	var post models.Post
+	r.db.Raw("SELECT * FROM posts WHERE id = ?", postID).Scan(&post)
+	return &post
+}
+
 func (r *postRepository) CreatePost(post *models.Post) *models.Post {
 	r.db.Create(post)
 	return post
