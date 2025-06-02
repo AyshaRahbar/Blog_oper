@@ -98,8 +98,8 @@ func (s *TestSuite) createPost(title, content string) (string, error) {
 
 	w := s.makeRequest("POST", "/api/posts", bytes.NewBuffer(body))
 
-	if w.Code != 201 {
-		return "", fmt.Errorf("expected status 201, got %d", w.Code)
+	if w.Code != http.StatusCreated {
+		return "", fmt.Errorf("expected status %d, got %d", http.StatusCreated, w.Code)
 	}
 
 	responseBody, _ := io.ReadAll(w.Body)
@@ -128,34 +128,119 @@ func (s *TestSuite) createPost(title, content string) (string, error) {
 func (s *TestSuite) getPosts() ([]models.Post, error) {
 	w := s.makeRequest("GET", "/api/posts", nil)
 
-	if w.Code >= 400 {
-		return nil, fmt.Errorf("status %d", w.Code)
+	if w.Code != http.StatusOK {
+		return nil, fmt.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
 	responseBody, _ := io.ReadAll(w.Body)
+	if len(responseBody) == 0 {
+		fmt.Println("Empty response body, returning empty posts slice")
+		return []models.Post{}, nil
+	}
+
 	var posts []models.Post
-	json.Unmarshal(responseBody, &posts)
+	err := json.Unmarshal(responseBody, &posts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %v", err)
+	}
+
+	if posts == nil {
+		posts = []models.Post{}
+	}
+
+	fmt.Printf("Successfully retrieved %d posts\n", len(posts))
 	return posts, nil
 }
 
 func (s *TestSuite) deletePost(id string) error {
+	fmt.Printf("delete post with ID: %s\n", id)
+
+	Prevpost, err := s.getPosts()
+	if err != nil {
+		return fmt.Errorf("Could not get posts before deletion: %v", err)
+	}
+
+	postExists := false
+	for _, post := range Prevpost {
+		if fmt.Sprintf("%d", post.ID) == id {
+			postExists = true
+			break
+		}
+	}
+	if !postExists {
+		return fmt.Errorf("post with ID %s does not exist before deletion", id)
+	}
+
 	w := s.makeRequest("DELETE", fmt.Sprintf("/api/posts/%s", id), nil)
 
-	if w.Code >= 400 {
-		return fmt.Errorf("status %d", w.Code)
+	if w.Code != http.StatusOK {
+		return fmt.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
+
+	afterPosts, err := s.getPosts()
+	if err != nil {
+		return fmt.Errorf("verification failed - could not get posts after deletion: %v", err)
+	}
+	postStillPresent := false
+	for _, post := range afterPosts {
+		if fmt.Sprintf("%d", post.ID) == id {
+			postStillPresent = true
+			break
+		}
+	}
+	if postStillPresent {
+		return fmt.Errorf("post with ID %s still exists after deletion", id)
+	}
+
+	fmt.Printf("Successfully deleted post with ID: %s (database now has %d posts)\n", id, len(afterPosts))
 	return nil
 }
 
 func (s *TestSuite) updatePost(id string, title, content string) error {
+	fmt.Printf("Update Post for ID: %s with title: %s\n", id, title)
+
+	beforePosts, err := s.getPosts()
+	if err != nil {
+		return fmt.Errorf("could not get posts: %v", err)
+	}
+
+	AlrExisting := false
+	for _, post := range beforePosts {
+		if fmt.Sprintf("%d", post.ID) == id {
+			AlrExisting = true
+			break
+		}
+	}
+	if !AlrExisting {
+		return fmt.Errorf("post with ID %s does not exist for update", id)
+	}
+
 	payload := map[string]string{"title": title, "content": content}
 	body, _ := json.Marshal(payload)
 
 	w := s.makeRequest("PUT", fmt.Sprintf("/api/posts/%s/update", id), bytes.NewBuffer(body))
 
-	if w.Code >= 400 {
-		return fmt.Errorf("status %d", w.Code)
+	if w.Code != http.StatusOK {
+		return fmt.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
+
+	afterPosts, err := s.getPosts()
+	if err != nil {
+		return fmt.Errorf("could not get posts: %v", err)
+	}
+
+	postUpdated := false
+	for _, post := range afterPosts {
+		if fmt.Sprintf("%d", post.ID) == id && post.Title == title && post.Content == content {
+			postUpdated = true
+			break
+		}
+	}
+	if postUpdated == false {
+		return fmt.Errorf("post with ID %s was not updated ", id)
+	}
+
+	fmt.Printf("post updated")
 	return nil
 }
 
