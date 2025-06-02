@@ -92,21 +92,37 @@ func TestPostIntegration(t *testing.T) {
 	})
 }
 
-
 func (s *TestSuite) createPost(title, content string) (string, error) {
 	payload := map[string]string{"title": title, "content": content}
 	body, _ := json.Marshal(payload)
 
 	w := s.makeRequest("POST", "/api/posts", bytes.NewBuffer(body))
 
-	if w.Code >= 400 {
-		return "", fmt.Errorf("status %d", w.Code)
+	if w.Code != 201 {
+		return "", fmt.Errorf("expected status 201, got %d", w.Code)
 	}
 
 	responseBody, _ := io.ReadAll(w.Body)
 	var post models.Post
 	json.Unmarshal(responseBody, &post)
-	return fmt.Sprintf("%d", post.ID), nil
+	createdID := fmt.Sprintf("%d", post.ID)
+
+	posts, err := s.getPosts()
+	if err != nil {
+		return "", fmt.Errorf("verification failed: %v", err)
+	}
+
+	postExists := false
+	for _, check := range posts {
+		if fmt.Sprintf("%d", check.ID) == createdID && check.Title == title && check.Content == content {
+			postExists = true
+			break
+		}
+	}
+	if !postExists {
+		return "", fmt.Errorf("post not found in database")
+	}
+	return createdID, nil
 }
 
 func (s *TestSuite) getPosts() ([]models.Post, error) {
@@ -142,7 +158,6 @@ func (s *TestSuite) updatePost(id string, title, content string) error {
 	}
 	return nil
 }
-
 
 /* individual test cases */
 
