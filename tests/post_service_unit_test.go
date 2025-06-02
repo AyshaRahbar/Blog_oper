@@ -70,7 +70,7 @@ func TestPostIntegration(t *testing.T) {
 
 		t.Run("Create Post", func(t *testing.T) {
 			postID, err := suite.createPost(TestTitle, TestContent)
-			require.NoError(t, err, "post enoucnting problems")
+			require.NoError(t, err, "post encounted problems")
 			createdPostID = postID
 		})
 
@@ -98,8 +98,8 @@ func (s *TestSuite) createPost(title, content string) (string, error) {
 
 	w := s.makeRequest("POST", "/api/posts", bytes.NewBuffer(body))
 
-	if w.Code != http.StatusCreated {
-		return "", fmt.Errorf("expected status %d, got %d", http.StatusCreated, w.Code)
+	if w.Code != 201 {
+		return "", fmt.Errorf("expected status 201, got %d", w.Code)
 	}
 
 	responseBody, _ := io.ReadAll(w.Body)
@@ -132,23 +132,22 @@ func (s *TestSuite) getPosts() ([]models.Post, error) {
 		return nil, fmt.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	responseBody, _ := io.ReadAll(w.Body)
+	responseBody, err := io.ReadAll(w.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
 	if len(responseBody) == 0 {
-		fmt.Println("Empty response body, returning empty posts slice")
+		fmt.Println("no posts available")
 		return []models.Post{}, nil
 	}
 
 	var posts []models.Post
-	err := json.Unmarshal(responseBody, &posts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %v", err)
+	if err := json.Unmarshal(responseBody, &posts); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal posts: %v", err)
 	}
 
-	if posts == nil {
-		posts = []models.Post{}
-	}
-
-	fmt.Printf("Successfully retrieved %d posts\n", len(posts))
+	fmt.Printf("retrieved %d post(s)\n", len(posts))
 	return posts, nil
 }
 
@@ -157,7 +156,7 @@ func (s *TestSuite) deletePost(id string) error {
 
 	Prevpost, err := s.getPosts()
 	if err != nil {
-		return fmt.Errorf("Could not get posts before deletion: %v", err)
+		return fmt.Errorf("error in getting posts, %v", err)
 	}
 
 	postExists := false
@@ -168,7 +167,7 @@ func (s *TestSuite) deletePost(id string) error {
 		}
 	}
 	if !postExists {
-		return fmt.Errorf("post with ID %s does not exist before deletion", id)
+		return fmt.Errorf("post with ID %s does not exist to delete", id)
 	}
 
 	w := s.makeRequest("DELETE", fmt.Sprintf("/api/posts/%s", id), nil)
@@ -179,7 +178,7 @@ func (s *TestSuite) deletePost(id string) error {
 
 	afterPosts, err := s.getPosts()
 	if err != nil {
-		return fmt.Errorf("verification failed - could not get posts after deletion: %v", err)
+		return fmt.Errorf("could not get posts after deletion: %v", err)
 	}
 	postStillPresent := false
 	for _, post := range afterPosts {
@@ -189,16 +188,14 @@ func (s *TestSuite) deletePost(id string) error {
 		}
 	}
 	if postStillPresent {
-		return fmt.Errorf("post with ID %s still exists after deletion", id)
+		return fmt.Errorf("deletion failed for %s", id)
 	}
 
-	fmt.Printf("Successfully deleted post with ID: %s (database now has %d posts)\n", id, len(afterPosts))
+	fmt.Printf("deleted post with ID: %s \n", id)
 	return nil
 }
 
 func (s *TestSuite) updatePost(id string, title, content string) error {
-	fmt.Printf("Update Post for ID: %s with title: %s\n", id, title)
-
 	beforePosts, err := s.getPosts()
 	if err != nil {
 		return fmt.Errorf("could not get posts: %v", err)
@@ -212,7 +209,7 @@ func (s *TestSuite) updatePost(id string, title, content string) error {
 		}
 	}
 	if !AlrExisting {
-		return fmt.Errorf("post with ID %s does not exist for update", id)
+		return fmt.Errorf("post with ID %s is not created", id)
 	}
 
 	payload := map[string]string{"title": title, "content": content}
@@ -221,7 +218,7 @@ func (s *TestSuite) updatePost(id string, title, content string) error {
 	w := s.makeRequest("PUT", fmt.Sprintf("/api/posts/%s/update", id), bytes.NewBuffer(body))
 
 	if w.Code != http.StatusOK {
-		return fmt.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+		return fmt.Errorf("expected status %d got %d", http.StatusOK, w.Code)
 	}
 
 	afterPosts, err := s.getPosts()
