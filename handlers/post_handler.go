@@ -64,3 +64,13 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Post deleted successfully"})
 }
+
+func (h *PostHandler) GetPostByID(c *gin.Context) {
+	id := c.Param("id")
+	post, err := h.service.GetPostByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, post)
+}

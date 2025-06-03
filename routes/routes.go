@@ -14,6 +14,7 @@ func SetupRoutes(postHandler *handlers.PostHandler) *gin.Engine {
 		api.DELETE("/posts/:id", postHandler.DeletePost)
 		api.GET("/posts", postHandler.GetPosts)
 		api.PUT("/posts/:id/update", postHandler.UpdatePost)
+		api.GET("/posts/:id",postHandler.GetPostByID)
 	}
 
 	return router

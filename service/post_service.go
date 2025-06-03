@@ -11,6 +11,7 @@ import (
 
 type PostService interface {
 	GetAllPosts() ([]models.Post, error)
+	GetPostByID(id string) (*models.Post, error)
 	CreatePost(post *models.Post) (*models.Post, error)
 	UpdatePost(id string, post *models.Post) (*models.Post, error)
 	DeletePost(id string) error
@@ -134,4 +135,18 @@ func (s *postService) DeletePost(id string) error {
 	}
 
 	return nil
+}
+
+func (s *postService) GetPostByID(id string) (*models.Post, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, errors.New("post ID cannot be empty")
+	}
+	post, err := s.repo.GetPost(id)
+	if err != nil {
+		return nil, fmt.Errorf("post not found %s", id)
+	}
+	if post == nil {
+		return nil, fmt.Errorf("post doesnt exist %s", id)
+	}
+	return post, nil
 }
