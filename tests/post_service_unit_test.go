@@ -23,7 +23,9 @@ import (
 )
 
 type TestSuite struct {
-	Router *gin.Engine
+	Router      *gin.Engine
+	PostService service.PostService
+	PostRepo    repo.PostRepository
 }
 
 const (
@@ -47,7 +49,7 @@ func setup() *TestSuite {
 	postHandler := handlers.NewPostHandler(postService)
 	router := routes.SetupRoutes(postHandler)
 
-	return &TestSuite{Router: router}
+	return &TestSuite{Router: router, PostService: postService, PostRepo: repository}
 }
 
 func (s *TestSuite) makeRequest(method, url string, body *bytes.Buffer) *httptest.ResponseRecorder {
@@ -97,7 +99,30 @@ func (s *TestSuite) CreatePostTest(t *testing.T, title string, content string) s
 	assert.Equal(t, expectedResponse.Title, actualResponse.Title, "title couldnt form correctly")
 	assert.Equal(t, expectedResponse.Content, actualResponse.Content, "content is different from expectations")
 	assert.NotZero(t, actualResponse.ID, "Post ID should be set")
-	return fmt.Sprintf("%d", actualResponse.ID)
+/*
+newID := actualResponse.ID
+fetchedPost, err := s.PostRepo.GetPost(fmt.Sprintf("%d", newID))
+if err != nil {
+    t.Fatalf("Error fetching id: %v", err)
+}
+if fetchedPost == nil {
+    t.Fatalf("Post not found in DB")
+}
+if newID == fetchedPost.ID {
+    fmt.Println("id found")
+} else {
+    t.Fatalf("error ,id not found")
+}
+*/
+	newID := fmt.Sprintf("%d", actualResponse.ID)
+	fetchedPost, err := s.PostRepo.GetPost(newID)
+	require.NoError(t, err, "no error while fetching from db")
+	require.NotNil(t, fetchedPost, "post not nil in db")
+	assert.Equal(t, actualResponse.ID, fetchedPost.ID, "postId matches")
+	assert.Equal(t, title, fetchedPost.Title, "title should match")
+	assert.Equal(t, content, fetchedPost.Content, "content should match")
+
+	return newID
 }
 
 func (s *TestSuite) GetPostsTest(t *testing.T) []models.Post {
@@ -140,6 +165,19 @@ func (s *TestSuite) DeletePostTest(t *testing.T, id string) {
 	assert.Equal(t, expectedResponse, actualResponse, "delete response did not match expected response")
 }
 
+func (s *TestSuite) GetPostByIDTest(t *testing.T, id string, expectedTitle, expectedContent string) {
+	w := s.makeRequest("GET", fmt.Sprintf("/api/posts/%s", id), nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200 OK, got %d", w.Code)
+	}
+	responseBody, _ := io.ReadAll(w.Body)
+	var actualResponse models.Post
+	json.Unmarshal(responseBody, &actualResponse)
+	assert.Equal(t, id, fmt.Sprintf("%d", actualResponse.ID), "id should match")
+	assert.Equal(t, expectedTitle, actualResponse.Title, "title should match")
+	assert.Equal(t, expectedContent, actualResponse.Content, "content should match")
+}
+
 func TestPostIntegration(t *testing.T) {
 	t.Run("Complete Post Lifecycle", func(t *testing.T) {
 		suite := setup()
@@ -155,6 +193,10 @@ func TestPostIntegration(t *testing.T) {
 			require.NotEmpty(t, posts, "Posts list should not be empty")
 		})
 
+		t.Run("Get Post by ID", func(t *testing.T) {
+			suite.GetPostByIDTest(t, createdPostID, TestTitle, TestContent)
+		})
+
 		t.Run("Update Post", func(t *testing.T) {
 			suite.UpdatePostTest(t, createdPostID, UpdatedTitle, UpdatedContent)
 		})
@@ -165,6 +207,7 @@ func TestPostIntegration(t *testing.T) {
 	})
 }
 
+/*   individual functions   */
 func TestCreatePost(t *testing.T) {
 	suite := setup()
 	suite.CreatePostTest(t, TestTitle, TestContent)
@@ -185,4 +228,10 @@ func TestDeletePost(t *testing.T) {
 	suite := setup()
 	createdID := suite.CreatePostTest(t, TestTitle, TestContent)
 	suite.DeletePostTest(t, createdID)
+}
+
+func TestGetPostByID(t *testing.T) {
+	suite := setup()
+	newID := suite.CreatePostTest(t, TestTitle, TestContent)
+	suite.GetPostByIDTest(t, newID, TestTitle, TestContent)
 }
