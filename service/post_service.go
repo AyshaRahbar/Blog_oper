@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"go-blog/models"
 	"go-blog/repo"
-	"strconv"
 	"strings"
 )
 
 type PostService interface {
 	GetAllPosts() ([]models.Post, error)
-	GetPostByID(id string) (*models.Post, error)
+	GetPostByID(id int) (*models.Post, error)
 	CreatePost(post *models.Post) (*models.Post, error)
-	UpdatePost(id string, post *models.Post) (*models.Post, error)
-	DeletePost(id string) error
+	UpdatePost(id int, post *models.Post) (*models.Post, error)
+	DeletePost(id int) error
 }
 
 type postService struct {
@@ -53,7 +52,7 @@ func (s *postService) CreatePost(post *models.Post) (*models.Post, error) {
 	return createdPost, nil
 }
 
-func (s *postService) UpdatePost(id string, post *models.Post) (*models.Post, error) {
+func (s *postService) UpdatePost(id int, post *models.Post) (*models.Post, error) {
 	if strings.TrimSpace(post.Title) == "" {
 		return nil, errors.New("title cannot be empty")
 	}
@@ -63,18 +62,10 @@ func (s *postService) UpdatePost(id string, post *models.Post) (*models.Post, er
 
 	beforePosts, err := s.repo.GetPost(id)
 	if err != nil {
-		return nil, fmt.Errorf("post with ID %s does not exist", id)
+		return nil, fmt.Errorf("post with ID %d does not exist", id)
 	}
 	if beforePosts == nil {
-		return nil, fmt.Errorf("post with ID %s not found", id)
-	}
-
-	AlrExisting := true
-	if beforePosts == nil {
-		AlrExisting = false
-	}
-	if !AlrExisting {
-		return nil, fmt.Errorf("post with ID %s is not created", id)
+		return nil, fmt.Errorf("post with ID %d not found", id)
 	}
 
 	updatedPost, err := s.repo.Update(id, post)
@@ -86,38 +77,24 @@ func (s *postService) UpdatePost(id string, post *models.Post) (*models.Post, er
 		return nil, errors.New("post update failed - no post returned")
 	}
 
-	postUpdated := false
-	if updatedPost.Title == post.Title && updatedPost.Content == post.Content {
-		postUpdated = true
-	}
-	if postUpdated == false {
-		return nil, fmt.Errorf("post with ID %s was not updated", id)
+	if updatedPost.Title != post.Title || updatedPost.Content != post.Content {
+		return nil, fmt.Errorf("post with ID %d was not updated", id)
 	}
 
-	expectedID, _ := strconv.Atoi(id)
-	if updatedPost.ID != expectedID {
+	if updatedPost.ID != id {
 		return nil, errors.New("post update failed - ID mismatch")
 	}
 
 	return updatedPost, nil
 }
 
-func (s *postService) DeletePost(id string) error {
-
+func (s *postService) DeletePost(id int) error {
 	Prevpost, err := s.repo.GetPost(id)
 	if err != nil {
-		return fmt.Errorf("post with ID %s does not exist to delete", id)
+		return fmt.Errorf("post with ID %d does not exist to delete", id)
 	}
 	if Prevpost == nil {
-		return fmt.Errorf("post with ID %s not found", id)
-	}
-
-	postExists := true
-	if Prevpost == nil {
-		postExists = false
-	}
-	if !postExists {
-		return fmt.Errorf("post with ID %s does not exist to delete", id)
+		return fmt.Errorf("post with ID %d not found", id)
 	}
 
 	err = s.repo.DeletePost(id)
@@ -126,27 +103,21 @@ func (s *postService) DeletePost(id string) error {
 	}
 
 	afterPosts, err := s.repo.GetPost(id)
-	postStillPresent := false
 	if err == nil && afterPosts != nil {
-		postStillPresent = true
-	}
-	if postStillPresent {
-		return fmt.Errorf("deletion failed for %s", id)
+		return fmt.Errorf("deletion failed for %d", id)
 	}
 
 	return nil
 }
 
-func (s *postService) GetPostByID(id string) (*models.Post, error) {
-	if strings.TrimSpace(id) == "" {
-		return nil, errors.New("post ID cannot be empty")
-	}
+func (s *postService) GetPostByID(id int) (*models.Post, error) {
 	post, err := s.repo.GetPost(id)
 	if err != nil {
-		return nil, fmt.Errorf("post not found %s", id)
+		return nil, fmt.Errorf("post not found %d", id)
 	}
 	if post == nil {
-		return nil, fmt.Errorf("post doesnt exist %s", id)
+		return nil, fmt.Errorf("post doesnt exist %d", id)
 	}
 	return post, nil
 }
+

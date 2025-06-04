@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -66,8 +65,7 @@ func (s *TestSuite) makeRequest(method, url string, body *bytes.Buffer) *httptes
 	return w
 }
 
-func NewPostResponseForTest(postId string, title string, content string) *models.Post {
-	id, _ := strconv.Atoi(postId)
+func NewPostResponseForTest(id int, title string, content string) *models.Post {
 	return &models.Post{
 		ID:      id,
 		Title:   title,
@@ -81,7 +79,7 @@ func NewDeletePostResponseForTest() map[string]interface{} {
 	}
 }
 
-func (s *TestSuite) CreatePostTest(t *testing.T, title string, content string) string {
+func (s *TestSuite) CreatePostTest(t *testing.T, title string, content string) int {
 	payload := map[string]string{"title": title, "content": content}
 	body, _ := json.Marshal(payload)
 	w := s.makeRequest("POST", "/api/posts", bytes.NewBuffer(body))
@@ -92,7 +90,7 @@ func (s *TestSuite) CreatePostTest(t *testing.T, title string, content string) s
 	var actualResponse models.Post
 	json.Unmarshal(responseBody, &actualResponse)
 	expectedResponse := NewPostResponseForTest(
-		fmt.Sprintf("%d", actualResponse.ID),
+		actualResponse.ID,
 		title,
 		content,
 	)
@@ -100,31 +98,14 @@ func (s *TestSuite) CreatePostTest(t *testing.T, title string, content string) s
 	assert.Equal(t, expectedResponse.Content, actualResponse.Content, "content is different from expectations")
 	assert.NotZero(t, actualResponse.ID, "Post ID should be set")
 
-	/*
-		newID := actualResponse.ID
-		fetchedPost, err := s.PostRepo.GetPost(fmt.Sprintf("%d", newID))
-		if err != nil {
-			t.Fatalf("Error fetching id: %v", err)
-		}
-		if fetchedPost == nil {
-			t.Fatalf("Post not found in DB")
-		}
-		if newID == fetchedPost.ID {
-			fmt.Println("id found")
-		} else {
-			t.Fatalf("error ,id not found")
-		}
-	*/
-
-	newID := fmt.Sprintf("%d", actualResponse.ID)
-	fetchedPost, err := s.PostRepo.GetPost(newID)
+	fetchedPost, err := s.PostRepo.GetPost(fmt.Sprintf("%d", actualResponse.ID))
 	require.NoError(t, err, "no error while fetching from db")
 	require.NotNil(t, fetchedPost, "post not nil in db")
 	assert.Equal(t, actualResponse.ID, fetchedPost.ID, "postId matches")
 	assert.Equal(t, title, fetchedPost.Title, "title should match")
 	assert.Equal(t, content, fetchedPost.Content, "content should match")
 
-	return newID
+	return actualResponse.ID
 }
 
 func (s *TestSuite) GetPostsTest(t *testing.T) []models.Post {
@@ -139,10 +120,10 @@ func (s *TestSuite) GetPostsTest(t *testing.T) []models.Post {
 	return actualResponse
 }
 
-func (s *TestSuite) UpdatePostTest(t *testing.T, id string, title string, content string) {
+func (s *TestSuite) UpdatePostTest(t *testing.T, id int, title string, content string) {
 	payload := map[string]string{"title": title, "content": content}
 	body, _ := json.Marshal(payload)
-	w := s.makeRequest("PUT", fmt.Sprintf("/api/posts/%s/update", id), bytes.NewBuffer(body))
+	w := s.makeRequest("PUT", fmt.Sprintf("/api/posts/%d/update", id), bytes.NewBuffer(body))
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200 OK, got %d", w.Code)
 	}
@@ -155,8 +136,8 @@ func (s *TestSuite) UpdatePostTest(t *testing.T, id string, title string, conten
 	assert.NotZero(t, actualResponse.ID, "Post ID should be preserved")
 }
 
-func (s *TestSuite) DeletePostTest(t *testing.T, id string) {
-	w := s.makeRequest("DELETE", fmt.Sprintf("/api/posts/%s", id), nil)
+func (s *TestSuite) DeletePostTest(t *testing.T, id int) {
+	w := s.makeRequest("DELETE", fmt.Sprintf("/api/posts/%d", id), nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200 OK, got %d", w.Code)
 	}
@@ -167,15 +148,15 @@ func (s *TestSuite) DeletePostTest(t *testing.T, id string) {
 	assert.Equal(t, expectedResponse, actualResponse, "delete response did not match expected response")
 }
 
-func (s *TestSuite) GetPostByIDTest(t *testing.T, id string, expectedTitle, expectedContent string) {
-	w := s.makeRequest("GET", fmt.Sprintf("/api/posts/%s", id), nil)
+func (s *TestSuite) GetPostByIDTest(t *testing.T, id int, expectedTitle, expectedContent string) {
+	w := s.makeRequest("GET", fmt.Sprintf("/api/posts/%d", id), nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200 OK, got %d", w.Code)
 	}
 	responseBody, _ := io.ReadAll(w.Body)
 	var actualResponse models.Post
 	json.Unmarshal(responseBody, &actualResponse)
-	assert.Equal(t, id, fmt.Sprintf("%d", actualResponse.ID), "id should match")
+	assert.Equal(t, id, actualResponse.ID, "id should match")
 	assert.Equal(t, expectedTitle, actualResponse.Title, "title should match")
 	assert.Equal(t, expectedContent, actualResponse.Content, "content should match")
 }
@@ -183,11 +164,11 @@ func (s *TestSuite) GetPostByIDTest(t *testing.T, id string, expectedTitle, expe
 func TestPostIntegration(t *testing.T) {
 	t.Run("Complete Post Lifecycle", func(t *testing.T) {
 		suite := setup()
-		var createdPostID string
+		var createdPostID int
 
 		t.Run("Create Post", func(t *testing.T) {
 			createdPostID = suite.CreatePostTest(t, TestTitle, TestContent)
-			require.NotEmpty(t, createdPostID, "Created post ID should not be empty")
+			require.NotZero(t, createdPostID, "Created post ID should not be zero")
 		})
 
 		t.Run("Get All Posts", func(t *testing.T) {
@@ -206,7 +187,7 @@ func TestPostIntegration(t *testing.T) {
 
 		t.Run("Delete Post", func(t *testing.T) {
 			suite.DeletePostTest(t, createdPostID)
-			w := suite.makeRequest("GET", fmt.Sprintf("/api/posts/%s", createdPostID), nil)
+			w := suite.makeRequest("GET", fmt.Sprintf("/api/posts/%d", createdPostID), nil)
 			if w.Code != http.StatusNotFound {
 				t.Fatalf("should get not found after delete, got %d", w.Code)
 			}
@@ -236,7 +217,7 @@ func TestDeletePost(t *testing.T) {
 	suite := setup()
 	createdID := suite.CreatePostTest(t, TestTitle, TestContent)
 	suite.DeletePostTest(t, createdID)
-	w := suite.makeRequest("GET", fmt.Sprintf("/api/posts/%s", createdID), nil)
+	w := suite.makeRequest("GET", fmt.Sprintf("/api/posts/%d", createdID), nil)
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("should get not found after delete, got %d", w.Code)
 	}

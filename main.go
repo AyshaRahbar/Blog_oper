@@ -7,7 +7,6 @@ import (
 	"go-blog/routes"
 	"go-blog/service"
 	"os"
-
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -23,11 +22,15 @@ func initPostgreSQL() *gorm.DB {
 
 func main() {
 	db := initPostgreSQL()
-	db.AutoMigrate(&models.Post{})
+	db.AutoMigrate(&models.Post{}, &models.User{})
 
 	postRepo := repo.NewPostRepository(db)
 	postService := service.NewPostService(postRepo)
 	postHandler := handlers.NewPostHandler(postService)
-	r := routes.SetupRoutes(postHandler)
+	userRepo := repo.NewUserRepository(db)
+	userService := service.NewUserService(userRepo)
+	userHandler := handlers.NewUserHandler(userService)
+
+	r := routes.SetupRoutes(postHandler, userHandler)
 	r.Run(":8080")
 }

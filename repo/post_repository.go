@@ -8,10 +8,10 @@ import (
 
 type PostRepository interface {
 	ListPosts() ([]models.Post, error)
-	GetPost(postID string) (*models.Post, error)
+	GetPost(postID int) (*models.Post, error)
 	CreatePost(post *models.Post) (*models.Post, error)
-	Update(id string, post *models.Post) (*models.Post, error)
-	DeletePost(postID string) error
+	Update(id int, post *models.Post) (*models.Post, error)
+	DeletePost(postID int) error
 }
 
 type postRepository struct {
@@ -30,7 +30,7 @@ func (r *postRepository) ListPosts() ([]models.Post, error) {
 	return posts, nil
 }
 
-func (r *postRepository) GetPost(postID string) (*models.Post, error) {
+func (r *postRepository) GetPost(postID int) (*models.Post, error) {
 	var post models.Post
 	if err := r.db.First(&post, "id = ?", postID).Error; err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (r *postRepository) CreatePost(post *models.Post) (*models.Post, error) {
 	return post, nil
 }
 
-func (r *postRepository) Update(id string, post *models.Post) (*models.Post, error) {
+func (r *postRepository) Update(id int, post *models.Post) (*models.Post, error) {
 	if err := r.db.Model(&models.Post{}).Where("id = ?", id).Updates(models.Post{
 		Title:   post.Title,
 		Content: post.Content,
@@ -60,7 +60,7 @@ func (r *postRepository) Update(id string, post *models.Post) (*models.Post, err
 	return &updatedPost, nil
 }
 
-func (r *postRepository) DeletePost(postID string) error {
+func (r *postRepository) DeletePost(postID int) error {
 	if err := r.db.Delete(&models.Post{}, "id = ?", postID).Error; err != nil {
 		return err
 	}
