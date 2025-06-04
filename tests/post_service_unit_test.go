@@ -99,21 +99,23 @@ func (s *TestSuite) CreatePostTest(t *testing.T, title string, content string) s
 	assert.Equal(t, expectedResponse.Title, actualResponse.Title, "title couldnt form correctly")
 	assert.Equal(t, expectedResponse.Content, actualResponse.Content, "content is different from expectations")
 	assert.NotZero(t, actualResponse.ID, "Post ID should be set")
-/*
-newID := actualResponse.ID
-fetchedPost, err := s.PostRepo.GetPost(fmt.Sprintf("%d", newID))
-if err != nil {
-    t.Fatalf("Error fetching id: %v", err)
-}
-if fetchedPost == nil {
-    t.Fatalf("Post not found in DB")
-}
-if newID == fetchedPost.ID {
-    fmt.Println("id found")
-} else {
-    t.Fatalf("error ,id not found")
-}
-*/
+
+	/*
+		newID := actualResponse.ID
+		fetchedPost, err := s.PostRepo.GetPost(fmt.Sprintf("%d", newID))
+		if err != nil {
+			t.Fatalf("Error fetching id: %v", err)
+		}
+		if fetchedPost == nil {
+			t.Fatalf("Post not found in DB")
+		}
+		if newID == fetchedPost.ID {
+			fmt.Println("id found")
+		} else {
+			t.Fatalf("error ,id not found")
+		}
+	*/
+
 	newID := fmt.Sprintf("%d", actualResponse.ID)
 	fetchedPost, err := s.PostRepo.GetPost(newID)
 	require.NoError(t, err, "no error while fetching from db")
@@ -199,15 +201,20 @@ func TestPostIntegration(t *testing.T) {
 
 		t.Run("Update Post", func(t *testing.T) {
 			suite.UpdatePostTest(t, createdPostID, UpdatedTitle, UpdatedContent)
+			suite.GetPostByIDTest(t, createdPostID, UpdatedTitle, UpdatedContent)
 		})
 
 		t.Run("Delete Post", func(t *testing.T) {
 			suite.DeletePostTest(t, createdPostID)
+			w := suite.makeRequest("GET", fmt.Sprintf("/api/posts/%s", createdPostID), nil)
+			if w.Code != http.StatusNotFound {
+				t.Fatalf("should get not found after delete, got %d", w.Code)
+			}
 		})
 	})
 }
 
-/*   individual functions   */
+/*                                 individual functions                                 */
 func TestCreatePost(t *testing.T) {
 	suite := setup()
 	suite.CreatePostTest(t, TestTitle, TestContent)
@@ -222,12 +229,17 @@ func TestUpdatePost(t *testing.T) {
 	suite := setup()
 	createdID := suite.CreatePostTest(t, TestTitle, TestContent)
 	suite.UpdatePostTest(t, createdID, UpdatedTitle, UpdatedContent)
+	suite.GetPostByIDTest(t, createdID, UpdatedTitle, UpdatedContent)
 }
 
 func TestDeletePost(t *testing.T) {
 	suite := setup()
 	createdID := suite.CreatePostTest(t, TestTitle, TestContent)
 	suite.DeletePostTest(t, createdID)
+	w := suite.makeRequest("GET", fmt.Sprintf("/api/posts/%s", createdID), nil)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("should get not found after delete, got %d", w.Code)
+	}
 }
 
 func TestGetPostByID(t *testing.T) {
