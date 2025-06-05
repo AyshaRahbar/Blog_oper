@@ -4,7 +4,6 @@ import (
 	"errors"
 	"go-blog/models"
 	"go-blog/repo"
-
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -44,8 +43,11 @@ func (s *UserService) Login(username, password string) (*models.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	if user.Password != password {
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if err != nil {
 		return nil, errors.New("invalid password")
 	}
+
 	return user, nil
 }

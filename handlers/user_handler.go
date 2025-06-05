@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -40,8 +41,10 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 	generateToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":  user.ID,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		"id":           user.ID,
+		"username":     user.Username,
+		"account_type": user.AccountType,
+		"exp":          time.Now().Add(time.Hour * 24).Unix(),
 	})
 
 	token, err := generateToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
