@@ -4,6 +4,8 @@ import (
 	"errors"
 	"go-blog/models"
 	"go-blog/repo"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -23,9 +25,14 @@ func (s *UserService) Register(req *models.RegisterRequest) (*models.User, error
 		return nil, errors.New("username exists")
 	}
 
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
 	user := &models.User{
 		Username:    req.Username,
-		Password:    req.Password,
+		Password:    string(hashedPassword),
 		AccountType: req.AccountType,
 	}
 

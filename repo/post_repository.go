@@ -21,7 +21,6 @@ type postRepository struct {
 func NewPostRepository(db *gorm.DB) PostRepository {
 	return &postRepository{db: db}
 }
-
 func (r *postRepository) ListPosts() ([]models.Post, error) {
 	var posts []models.Post
 	if err := r.db.Find(&posts).Error; err != nil {
@@ -29,7 +28,6 @@ func (r *postRepository) ListPosts() ([]models.Post, error) {
 	}
 	return posts, nil
 }
-
 func (r *postRepository) GetPost(postID int) (*models.Post, error) {
 	var post models.Post
 	if err := r.db.First(&post, "id = ?", postID).Error; err != nil {
