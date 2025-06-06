@@ -4,28 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go-blog/handlers"
 	"go-blog/models"
-	"go-blog/repo"
-	"go-blog/routes"
-	"go-blog/service"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
-
-	"github.com/gin-gonic/gin"
+	"go-blog/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
-
-type TestSuite struct {
-	Router      *gin.Engine
-	PostService service.PostService
-	PostRepo    repo.PostRepository
-}
 
 const (
 	TestTitle      = "title 1"
@@ -34,38 +20,7 @@ const (
 	UpdatedContent = "updated random blog"
 )
 
-func setup() *TestSuite {
-	dsn := "postgres://postgres:postgres@localhost:5432/blogdb?sslmode=disable"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		panic(fmt.Sprintf("couldn't connect to db: %v", err))
-	}
-
-	db.AutoMigrate(&models.Post{})
-	gin.SetMode(gin.TestMode)
-	repository := repo.NewPostRepository(db)
-	postService := service.NewPostService(repository)
-	postHandler := handlers.NewPostHandler(postService)
-	router := routes.SetupRoutes(postHandler)
-
-	return &TestSuite{Router: router, PostService: postService, PostRepo: repository}
-}
-
-func (s *TestSuite) makeRequest(method, url string, body *bytes.Buffer) *httptest.ResponseRecorder {
-	var req *http.Request
-	if body != nil {
-		req, _ = http.NewRequest(method, url, body)
-		req.Header.Set("Content-Type", "application/json")
-	} else {
-		req, _ = http.NewRequest(method, url, nil)
-	}
-
-	w := httptest.NewRecorder()
-	s.Router.ServeHTTP(w, req)
-	return w
-}
-
-func NewPostResponseForTest(id int, title string, content string) *models.Post {
+func newPostResponseForTest(id int, title string, content string) *models.Post {
 	return &models.Post{
 		ID:      id,
 		Title:   title,
@@ -73,23 +28,23 @@ func NewPostResponseForTest(id int, title string, content string) *models.Post {
 	}
 }
 
-func NewDeletePostResponseForTest() map[string]interface{} {
+func newDeletePostResponseForTest() map[string]interface{} {
 	return map[string]interface{}{
 		"message": "Post deleted successfully",
 	}
 }
 
-func (s *TestSuite) CreatePostTest(t *testing.T, title string, content string) int {
+func createPostTest(t *testing.T, suite *testutils.TestSuite, title string, content string) int {
 	payload := map[string]string{"title": title, "content": content}
 	body, _ := json.Marshal(payload)
-	w := s.makeRequest("POST", "/api/posts", bytes.NewBuffer(body))
+	w := suite.MakeRequest("POST", "/api/posts", bytes.NewBuffer(body))
 	if w.Code != http.StatusCreated {
 		t.Fatalf("Expected status 201 Created, got %d", w.Code)
 	}
 	responseBody, _ := io.ReadAll(w.Body)
 	var actualResponse models.Post
 	json.Unmarshal(responseBody, &actualResponse)
-	expectedResponse := NewPostResponseForTest(
+	expectedResponse := newPostResponseForTest(
 		actualResponse.ID,
 		title,
 		content,
@@ -98,7 +53,7 @@ func (s *TestSuite) CreatePostTest(t *testing.T, title string, content string) i
 	assert.Equal(t, expectedResponse.Content, actualResponse.Content, "content is different from expectations")
 	assert.NotZero(t, actualResponse.ID, "Post ID should be set")
 
-	fetchedPost, err := s.PostRepo.GetPost(fmt.Sprintf("%d", actualResponse.ID))
+	fetchedPost, err := suite.PostRepo.GetPost(actualResponse.ID)
 	require.NoError(t, err, "no error while fetching from db")
 	require.NotNil(t, fetchedPost, "post not nil in db")
 	assert.Equal(t, actualResponse.ID, fetchedPost.ID, "postId matches")
@@ -108,8 +63,8 @@ func (s *TestSuite) CreatePostTest(t *testing.T, title string, content string) i
 	return actualResponse.ID
 }
 
-func (s *TestSuite) GetPostsTest(t *testing.T) []models.Post {
-	w := s.makeRequest("GET", "/api/posts", nil)
+func getPostsTest(t *testing.T, suite *testutils.TestSuite) []models.Post {
+	w := suite.MakeRequest("GET", "/api/posts", nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200 OK, got %d", w.Code)
 	}
@@ -120,36 +75,36 @@ func (s *TestSuite) GetPostsTest(t *testing.T) []models.Post {
 	return actualResponse
 }
 
-func (s *TestSuite) UpdatePostTest(t *testing.T, id int, title string, content string) {
+func updatePostTest(t *testing.T, suite *testutils.TestSuite, id int, title string, content string) {
 	payload := map[string]string{"title": title, "content": content}
 	body, _ := json.Marshal(payload)
-	w := s.makeRequest("PUT", fmt.Sprintf("/api/posts/%d/update", id), bytes.NewBuffer(body))
+	w := suite.MakeRequest("PUT", fmt.Sprintf("/api/posts/%d/update", id), bytes.NewBuffer(body))
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200 OK, got %d", w.Code)
 	}
 	responseBody, _ := io.ReadAll(w.Body)
 	var actualResponse models.Post
 	json.Unmarshal(responseBody, &actualResponse)
-	expectedResponse := NewPostResponseForTest(id, title, content)
+	expectedResponse := newPostResponseForTest(id, title, content)
 	assert.Equal(t, expectedResponse.Title, actualResponse.Title, "title could not update correctly")
 	assert.Equal(t, expectedResponse.Content, actualResponse.Content, "content is different from expectations")
 	assert.NotZero(t, actualResponse.ID, "Post ID should be preserved")
 }
 
-func (s *TestSuite) DeletePostTest(t *testing.T, id int) {
-	w := s.makeRequest("DELETE", fmt.Sprintf("/api/posts/%d", id), nil)
+func deletePostTest(t *testing.T, suite *testutils.TestSuite, id int) {
+	w := suite.MakeRequest("DELETE", fmt.Sprintf("/api/posts/%d", id), nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200 OK, got %d", w.Code)
 	}
 	responseBody, _ := io.ReadAll(w.Body)
 	var actualResponse map[string]interface{}
 	json.Unmarshal(responseBody, &actualResponse)
-	expectedResponse := NewDeletePostResponseForTest()
+	expectedResponse := newDeletePostResponseForTest()
 	assert.Equal(t, expectedResponse, actualResponse, "delete response did not match expected response")
 }
 
-func (s *TestSuite) GetPostByIDTest(t *testing.T, id int, expectedTitle, expectedContent string) {
-	w := s.makeRequest("GET", fmt.Sprintf("/api/posts/%d", id), nil)
+func getPostByIDTest(t *testing.T, suite *testutils.TestSuite, id int, expectedTitle, expectedContent string) {
+	w := suite.MakeRequest("GET", fmt.Sprintf("/api/posts/%d", id), nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Expected status 200 OK, got %d", w.Code)
 	}
@@ -162,69 +117,66 @@ func (s *TestSuite) GetPostByIDTest(t *testing.T, id int, expectedTitle, expecte
 }
 
 func TestPostIntegration(t *testing.T) {
-	t.Run("Complete Post Lifecycle", func(t *testing.T) {
-		suite := setup()
-		var createdPostID int
+	suite := testutils.Setup()
+	var createdPostID int
 
-		t.Run("Create Post", func(t *testing.T) {
-			createdPostID = suite.CreatePostTest(t, TestTitle, TestContent)
-			require.NotZero(t, createdPostID, "Created post ID should not be zero")
-		})
+	t.Run("Create Post", func(t *testing.T) {
+		createdPostID = createPostTest(t, suite, TestTitle, TestContent)
+		require.NotZero(t, createdPostID, "Created post ID should not be zero")
+	})
 
-		t.Run("Get All Posts", func(t *testing.T) {
-			posts := suite.GetPostsTest(t)
-			require.NotEmpty(t, posts, "Posts list should not be empty")
-		})
+	t.Run("Get All Posts", func(t *testing.T) {
+		posts := getPostsTest(t, suite)
+		require.NotEmpty(t, posts, "Posts list should not be empty")
+	})
 
-		t.Run("Get Post by ID", func(t *testing.T) {
-			suite.GetPostByIDTest(t, createdPostID, TestTitle, TestContent)
-		})
+	t.Run("Get Post by ID", func(t *testing.T) {
+		getPostByIDTest(t, suite, createdPostID, TestTitle, TestContent)
+	})
 
-		t.Run("Update Post", func(t *testing.T) {
-			suite.UpdatePostTest(t, createdPostID, UpdatedTitle, UpdatedContent)
-			suite.GetPostByIDTest(t, createdPostID, UpdatedTitle, UpdatedContent)
-		})
+	t.Run("Update Post", func(t *testing.T) {
+		updatePostTest(t, suite, createdPostID, UpdatedTitle, UpdatedContent)
+		getPostByIDTest(t, suite, createdPostID, UpdatedTitle, UpdatedContent)
+	})
 
-		t.Run("Delete Post", func(t *testing.T) {
-			suite.DeletePostTest(t, createdPostID)
-			w := suite.makeRequest("GET", fmt.Sprintf("/api/posts/%d", createdPostID), nil)
-			if w.Code != http.StatusNotFound {
-				t.Fatalf("should get not found after delete, got %d", w.Code)
-			}
-		})
+	t.Run("Delete Post", func(t *testing.T) {
+		deletePostTest(t, suite, createdPostID)
+		w := suite.MakeRequest("GET", fmt.Sprintf("/api/posts/%d", createdPostID), nil)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("should get not found after delete, got %d", w.Code)
+		}
 	})
 }
 
-/*                                 individual functions                                 */
 func TestCreatePost(t *testing.T) {
-	suite := setup()
-	suite.CreatePostTest(t, TestTitle, TestContent)
+	suite := testutils.Setup()
+	createPostTest(t, suite, TestTitle, TestContent)
 }
 
 func TestGetPosts(t *testing.T) {
-	suite := setup()
-	suite.GetPostsTest(t)
+	suite := testutils.Setup()
+	getPostsTest(t, suite)
 }
 
 func TestUpdatePost(t *testing.T) {
-	suite := setup()
-	createdID := suite.CreatePostTest(t, TestTitle, TestContent)
-	suite.UpdatePostTest(t, createdID, UpdatedTitle, UpdatedContent)
-	suite.GetPostByIDTest(t, createdID, UpdatedTitle, UpdatedContent)
+	suite := testutils.Setup()
+	createdID := createPostTest(t, suite, TestTitle, TestContent)
+	updatePostTest(t, suite, createdID, UpdatedTitle, UpdatedContent)
+	getPostByIDTest(t, suite, createdID, UpdatedTitle, UpdatedContent)
 }
 
 func TestDeletePost(t *testing.T) {
-	suite := setup()
-	createdID := suite.CreatePostTest(t, TestTitle, TestContent)
-	suite.DeletePostTest(t, createdID)
-	w := suite.makeRequest("GET", fmt.Sprintf("/api/posts/%d", createdID), nil)
+	suite := testutils.Setup()
+	createdID := createPostTest(t, suite, TestTitle, TestContent)
+	deletePostTest(t, suite, createdID)
+	w := suite.MakeRequest("GET", fmt.Sprintf("/api/posts/%d", createdID), nil)
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("should get not found after delete, got %d", w.Code)
 	}
 }
 
 func TestGetPostByID(t *testing.T) {
-	suite := setup()
-	newID := suite.CreatePostTest(t, TestTitle, TestContent)
-	suite.GetPostByIDTest(t, newID, TestTitle, TestContent)
+	suite := testutils.Setup()
+	newID := createPostTest(t, suite, TestTitle, TestContent)
+	getPostByIDTest(t, suite, newID, TestTitle, TestContent)
 }
