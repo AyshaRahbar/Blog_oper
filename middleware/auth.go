@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func JWTAuthMiddleware() gin.HandlerFunc {
+func JWTAuthMiddleware(requiredType *models.AccountType) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if header == "" || len(header) < 8 || header[:7] != "Bearer " {
@@ -39,7 +39,6 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
@@ -58,30 +57,32 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
-		c.Set("user_id", int(userID))
-		c.Set("account_type", accountType)
-		c.Next()
-	}
-}
-
-func RequireAccountType(requiredType models.AccountType) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		accountType, exists := c.Get("account_type")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
-			c.Abort()
-			return
-		}
-
-		if models.AccountType(accountType.(string)) != requiredType {
+		if requiredType != nil && models.AccountType(accountType) != *requiredType {
 			c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
 			c.Abort()
 			return
 		}
-
+		c.Set("user_id", int(userID))
+		c.Set("account_type", accountType)
+		if username, exists := claims["username"]; exists {
+			c.Set("username", username)
+		}
 		c.Next()
 	}
+}
+
+func JWTAuth() gin.HandlerFunc {
+	return JWTAuthMiddleware(nil)
+}
+
+func JWTAuthBlogger() gin.HandlerFunc {
+	bloggerType := models.AccountTypeBlogger
+	return JWTAuthMiddleware(&bloggerType)
+}
+
+func JWTAuthViewer() gin.HandlerFunc {
+	viewerType := models.AccountTypeViewer
+	return JWTAuthMiddleware(&viewerType)
 }
 
 func CheckPostOwnership(db *gorm.DB) gin.HandlerFunc {
@@ -117,7 +118,6 @@ func CheckPostOwnership(db *gorm.DB) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
 		c.Next()
 	}
 }
