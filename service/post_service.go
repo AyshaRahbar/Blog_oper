@@ -120,4 +120,3 @@ func (s *postService) GetPostByID(id int) (*models.Post, error) {
 	}
 	return post, nil
 }
-

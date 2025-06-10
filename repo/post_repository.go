@@ -44,9 +44,9 @@ func (r *postRepository) CreatePost(post *models.Post) (*models.Post, error) {
 }
 
 func (r *postRepository) Update(id int, post *models.Post) (*models.Post, error) {
-	if err := r.db.Model(&models.Post{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"title":   post.Title,
-		"content": post.Content,
+	if err := r.db.Model(&models.Post{}).Where("id = ?", id).Updates(models.Post{
+		Title:   post.Title,
+		Content: post.Content,
 	}).Error; err != nil {
 		return nil, err
 	}

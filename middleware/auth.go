@@ -3,13 +3,13 @@ package middleware
 import (
 	"fmt"
 	"go-blog/models"
+	"go-blog/repo"
 	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"gorm.io/gorm"
 )
 
 func JWTAuthMiddleware(requiredType *models.AccountType) gin.HandlerFunc {
@@ -85,7 +85,7 @@ func JWTAuthViewer() gin.HandlerFunc {
 	return JWTAuthMiddleware(&viewerType)
 }
 
-func CheckPostOwnership(db *gorm.DB) gin.HandlerFunc {
+func CheckPostOwnership(authRepo repo.AuthRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, exists := c.Get("user_id")
 		if !exists {
@@ -102,19 +102,16 @@ func CheckPostOwnership(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		var post models.Post
-		if err := db.First(&post, "id = ?", postID).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
+		err = authRepo.CheckPostOwnership(postID, userID.(int))
+		if err != nil {
+			switch err {
+			case models.ErrPostNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			case models.ErrPostUnauthorized:
+				c.JSON(http.StatusForbidden, gin.H{"error": "you can only update your own posts"})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 			}
-			c.Abort()
-			return
-		}
-
-		if post.UserID != userID.(int) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "you can only update your own posts"})
 			c.Abort()
 			return
 		}

@@ -17,6 +17,8 @@ type UpdatePostRequest struct {
 }
 
 var (
-	ErrPostNotFound = errors.New("post not found")
-	ErrInvalidPost  = errors.New("invalid post")
+	ErrPostNotFound     = errors.New("post not found")
+	ErrInvalidPost      = errors.New("invalid post")
+	ErrPostUnauthorized = errors.New("unauthorized to access this post")
+	ErrDatabaseError    = errors.New("database error")
 )
