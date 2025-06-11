@@ -31,16 +31,25 @@ func initPostgreSQL() *gorm.DB {
 
 func main() {
 	db := initPostgreSQL()
-	db.AutoMigrate(&models.Post{}, &models.User{})
+	db.AutoMigrate(&models.Post{}, &models.User{}, &models.Like{}, &models.Comment{})
 
 	postRepo := repo.NewPostRepository(db)
 	authRepo := repo.NewAuthRepository(postRepo)
 	postService := service.NewPostService(postRepo)
 	postHandler := handlers.NewPostHandler(postService)
+
 	userRepo := repo.NewUserRepository(db)
 	userService := service.NewUserService(userRepo)
 	userHandler := handlers.NewUserHandler(userService)
 
-	r := routes.SetupRoutes(postHandler, userHandler, authRepo)
+	likeRepo := repo.NewLikeRepository(db)
+	likeService := service.NewLikeService(likeRepo, postRepo)
+	likeHandler := handlers.NewLikeHandler(likeService)
+
+	commentRepo := repo.NewCommentRepository(db)
+	commentService := service.NewCommentService(commentRepo, postRepo)
+	commentHandler := handlers.NewCommentHandler(commentService)
+
+	r := routes.SetupRoutes(postHandler, userHandler, likeHandler, commentHandler, authRepo)
 	r.Run(":8080")
 }

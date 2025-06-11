@@ -8,7 +8,6 @@ import (
 	"go-blog/repo"
 	"go-blog/routes"
 	"go-blog/service"
-
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -30,10 +29,11 @@ func Setup() *TestSuite {
 		panic(fmt.Sprintf("couldn't connect to db: %v", err))
 	}
 
-	db.AutoMigrate(&models.Post{}, &models.User{})
+	db.AutoMigrate(&models.Post{}, &models.User{}, &models.Like{}, &models.Comment{})
 	gin.SetMode(gin.TestMode)
 
 	postRepository := repo.NewPostRepository(db)
+	authRepository := repo.NewAuthRepository(postRepository)
 	postService := service.NewPostService(postRepository)
 	postHandler := handlers.NewPostHandler(postService)
 
@@ -41,7 +41,15 @@ func Setup() *TestSuite {
 	userService := service.NewUserService(userRepository)
 	userHandler := handlers.NewUserHandler(userService)
 
-	router := routes.SetupRoutes(postHandler, userHandler)
+	likeRepository := repo.NewLikeRepository(db)
+	likeService := service.NewLikeService(likeRepository, postRepository)
+	likeHandler := handlers.NewLikeHandler(likeService)
+
+	commentRepository := repo.NewCommentRepository(db)
+	commentService := service.NewCommentService(commentRepository, postRepository)
+	commentHandler := handlers.NewCommentHandler(commentService)
+
+	router := routes.SetupRoutes(postHandler, userHandler, likeHandler, commentHandler, authRepository)
 
 	return &TestSuite{
 		Router:      router,

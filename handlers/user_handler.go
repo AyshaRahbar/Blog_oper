@@ -41,9 +41,10 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 	generateToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":  user.ID,
-		"account_type":user.AccountType,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		"id":           user.ID,
+		"username":     user.Username,
+		"account_type": user.AccountType,
+		"exp":          time.Now().Add(time.Hour * 24).Unix(),
 	})
 
 	token, err := generateToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
@@ -68,7 +69,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{
-		"message":     "user created",
+		"message":      "user created",
 		"user":         user.Username,
 		"account_type": user.AccountType,
 	})
