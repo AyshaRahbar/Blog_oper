@@ -17,6 +17,31 @@ func NewLikeHandler(likeService service.LikeService) *LikeHandler {
 	return &LikeHandler{likeService: likeService}
 }
 
+func (h *LikeHandler) getUserIDFromContext(c *gin.Context) (int, error) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return 0, models.ErrUserNotAuthenticated
+	}
+
+	userID, ok := userIDInterface.(int)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+		return 0, models.ErrInvalidUserIDFormat
+	}
+
+	return userID, nil
+}
+
+func (h *LikeHandler) getOptionalUserIDFromContext(c *gin.Context) *int {
+	if userIDInterface, exists := c.Get("user_id"); exists {
+		if uid, ok := userIDInterface.(int); ok {
+			return &uid
+		}
+	}
+	return nil
+}
+
 func (h *LikeHandler) LikePost(c *gin.Context) {
 	postIDStr := c.Param("id")
 	postID, err := strconv.Atoi(postIDStr)
@@ -24,16 +49,12 @@ func (h *LikeHandler) LikePost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+
+	userID, err := h.getUserIDFromContext(c)
+	if err != nil {
 		return
 	}
-	userID, ok := userIDInterface.(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
-		return
-	}
+
 	likeResponse, err := h.likeService.LikePost(userID, postID)
 	if err != nil {
 		switch err {
@@ -61,16 +82,12 @@ func (h *LikeHandler) UnlikePost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+
+	userID, err := h.getUserIDFromContext(c)
+	if err != nil {
 		return
 	}
-	userID, ok := userIDInterface.(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
-		return
-	}
+
 	err = h.likeService.UnlikePost(userID, postID)
 	if err != nil {
 		switch err {
@@ -93,12 +110,8 @@ func (h *LikeHandler) GetPostLikes(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
-	var userID *int
-	if userIDInterface, exists := c.Get("user_id"); exists {
-		if uid, ok := userIDInterface.(int); ok {
-			userID = &uid
-		}
-	}
+
+	userID := h.getOptionalUserIDFromContext(c)
 
 	likesResponse, err := h.likeService.GetPostLikes(postID, userID)
 	if err != nil {
@@ -114,16 +127,11 @@ func (h *LikeHandler) GetPostLikes(c *gin.Context) {
 }
 
 func (h *LikeHandler) GetUserLikes(c *gin.Context) {
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+	userID, err := h.getUserIDFromContext(c)
+	if err != nil {
 		return
 	}
-	userID, ok := userIDInterface.(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
-		return
-	}
+
 	likes, err := h.likeService.GetUserLikes(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user likes"})
