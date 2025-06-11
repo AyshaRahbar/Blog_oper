@@ -17,6 +17,22 @@ func NewCommentHandler(commentService service.CommentService) *CommentHandler {
 	return &CommentHandler{commentService: commentService}
 }
 
+func (h *CommentHandler) getUserIDFromContext(c *gin.Context) (int, error) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return 0, models.ErrUserNotAuthenticated
+	}
+
+	userID, ok := userIDInterface.(int)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+		return 0, models.ErrInvalidUserIDFormat
+	}
+
+	return userID, nil
+}
+
 func (h *CommentHandler) CreateComment(c *gin.Context) {
 	postIDStr := c.Param("id")
 	postID, err := strconv.Atoi(postIDStr)
@@ -25,15 +41,8 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	userID, ok := userIDInterface.(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userID, err := h.getUserIDFromContext(c)
+	if err != nil {
 		return
 	}
 
@@ -107,16 +116,11 @@ func (h *CommentHandler) GetPostWithComments(c *gin.Context) {
 }
 
 func (h *CommentHandler) GetUserComments(c *gin.Context) {
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+	userID, err := h.getUserIDFromContext(c)
+	if err != nil {
 		return
 	}
-	userID, ok := userIDInterface.(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
-		return
-	}
+
 	comments, err := h.commentService.GetCommentsByUser(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user comments"})
@@ -134,16 +138,12 @@ func (h *CommentHandler) UpdateComment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
 		return
 	}
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+
+	userID, err := h.getUserIDFromContext(c)
+	if err != nil {
 		return
 	}
-	userID, ok := userIDInterface.(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
-		return
-	}
+
 	var req models.UpdateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
@@ -178,16 +178,12 @@ func (h *CommentHandler) DeleteComment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
 		return
 	}
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+
+	userID, err := h.getUserIDFromContext(c)
+	if err != nil {
 		return
 	}
-	userID, ok := userIDInterface.(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
-		return
-	}
+
 	err = h.commentService.DeleteComment(commentID, userID)
 	if err != nil {
 		switch err {

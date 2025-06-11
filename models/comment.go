@@ -46,4 +46,6 @@ var (
 	ErrCommentContentEmpty    = errors.New("comment content cannot be empty")
 	ErrPostNotFoundForComment = errors.New("post not found for comment")
 	ErrCommentDatabaseError   = errors.New("comment database error")
+	ErrUserNotAuthenticated   = errors.New("user not authenticated")
+	ErrInvalidUserIDFormat    = errors.New("invalid user ID format")
 )
