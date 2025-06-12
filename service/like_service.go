@@ -13,6 +13,7 @@ type LikeService interface {
 	LikePost(userID, postID int) (*models.LikeResponse, error)
 	UnlikePost(userID, postID int) error
 	GetPostLikes(postID int, userID *int) (*models.PostLikesResponse, error)
+	GetPostLikesCount(postID int) (*models.PostLikesDetailResponse, error)
 	GetUserLikes(userID int) ([]models.LikeResponse, error)
 }
 
@@ -132,4 +133,32 @@ func (s *likeService) GetUserLikes(userID int) ([]models.LikeResponse, error) {
 	}
 
 	return likeResponses, nil
+}
+
+func (s *likeService) GetPostLikesCount(postID int) (*models.PostLikesDetailResponse, error) {
+	_, err := s.postRepo.GetPost(postID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, models.ErrPostNotFoundForLike
+		}
+		return nil, fmt.Errorf("error checking post existence: %w", err)
+	}
+	likes, err := s.likeRepo.GetLikesByPost(postID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get post likes: %w", err)
+	}
+	likeResponses := make([]models.LikeWithUserResponse, len(likes))
+	for i, like := range likes {
+		likeResponses[i] = models.LikeWithUserResponse{
+			ID:       like.ID,
+			UserID:   like.UserID,
+			PostID:   like.PostID,
+			Username: like.User.Username,
+		}
+	}
+	return &models.PostLikesDetailResponse{
+		PostID:    postID,
+		LikeCount: len(likes),
+		Likes:     likeResponses,
+	}, nil
 }

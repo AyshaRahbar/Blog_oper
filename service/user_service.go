@@ -4,6 +4,8 @@ import (
 	"errors"
 	"go-blog/models"
 	"go-blog/repo"
+	"os/user"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -50,4 +52,22 @@ func (s *UserService) Login(username, password string) (*models.User, error) {
 	}
 
 	return user, nil
+}
+
+func (s *UserService) GetAllUsers() ([]models.UserResponse, error) {
+	users, err := s.repo.GetAllUsers()
+	if err != nil {
+		return nil, err
+	}
+
+	userResponses := make([]models.UserResponse, len(users))
+	for i, user := range users {
+		userResponses[i] = models.UserResponse{
+			ID:          user.ID,
+			Username:    user.Username,
+			AccountType: user.AccountType,
+		}
+	}
+
+	return userResponses, nil
 }

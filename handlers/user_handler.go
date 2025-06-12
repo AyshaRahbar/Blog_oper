@@ -74,3 +74,12 @@ func (h *UserHandler) Register(c *gin.Context) {
 		"account_type": user.AccountType,
 	})
 }
+
+func (h *UserHandler) GetUsers(c *gin.Context) {
+	users, err := h.service.GetAllUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, users)
+}

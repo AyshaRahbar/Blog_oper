@@ -25,6 +25,19 @@ type PostLikesResponse struct {
 	IsLikedByUser bool `json:"is_liked_by_user"`
 }
 
+type LikeWithUserResponse struct {
+	ID       int    `json:"id"`
+	UserID   int    `json:"user_id"`
+	PostID   int    `json:"post_id"`
+	Username string `json:"username"`
+}
+
+type PostLikesDetailResponse struct {
+	PostID    int                    `json:"post_id"`
+	LikeCount int                    `json:"like_count"`
+	Likes     []LikeWithUserResponse `json:"likes"`
+}
+
 var (
 	ErrLikeNotFound        = errors.New("like not found")
 	ErrLikeAlreadyExists   = errors.New("user has already liked this post")

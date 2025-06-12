@@ -141,3 +141,23 @@ func (h *LikeHandler) GetUserLikes(c *gin.Context) {
 		"likes": likes,
 	})
 }
+
+func (h *LikeHandler) GetPostLikesCount(c *gin.Context) {
+	postIDStr := c.Param("id")
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+	likesDetail, err := h.likeService.GetPostLikesCount(postID)
+	if err != nil {
+		switch err {
+		case models.ErrPostNotFoundForLike:
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get post likes detail"})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, likesDetail)
+}

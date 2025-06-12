@@ -63,11 +63,11 @@ func (r *likeRepository) GetLikesByUser(userID int) ([]models.Like, error) {
 }
 
 func (r *likeRepository) GetLikeCount(postID int) (int, error) {
-	var likes []models.Like
-	if err := r.db.Where("post_id = ?", postID).Find(&likes).Error; err != nil {
+	var count int64
+	if err := r.db.Model(&models.Like{}).Where("post_id = ?", postID).Count(&count).Error; err != nil {
 		return 0, err
 	}
-	return len(likes), nil
+	return int(count), nil
 }
 
 func (r *likeRepository) IsPostLikedByUser(userID, postID int) (bool, error) {

@@ -37,3 +37,10 @@ func (r *UserRepository) GetUserByUsername(username string) (*models.User, error
 	return &user, nil
 }
 
+func (r *UserRepository) GetAllUsers() ([]models.User, error) {
+	var users []models.User
+	if err := r.DB.Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
+}

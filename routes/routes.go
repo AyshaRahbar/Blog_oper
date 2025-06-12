@@ -16,10 +16,12 @@ func SetupRoutes(postHandler *handlers.PostHandler, userHandler *handlers.UserHa
 	{
 		api.POST("/register", userHandler.Register)
 		api.POST("/login", userHandler.Login)
+		api.GET("/users", userHandler.GetUsers)
 		api.GET("/posts", postHandler.GetPosts)
 		api.GET("/posts/:id", postHandler.GetPostByID)
 
 		api.GET("/posts/:id/likes", likeHandler.GetPostLikes)
+		api.GET("/posts/:id/likes/detail", likeHandler.GetPostLikesCount)
 		api.GET("/posts/:id/comments", commentHandler.GetPostComments)
 		api.GET("/posts/:id/with-comments", commentHandler.GetPostWithComments)
 
