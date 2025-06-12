@@ -19,3 +19,9 @@ type RegisterRequest struct {
 	Password    string      `json:"password"`
 	AccountType AccountType `json:"account_type"`
 }
+
+type UserResponse struct {
+	ID          int         `json:"id"`
+	Username    string      `json:"username"`
+	AccountType AccountType `json:"account_type"`
+}

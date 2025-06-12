@@ -21,10 +21,8 @@ func (r *authRepository) CheckPostOwnership(postID int, userID int) error {
 	if err != nil {
 		return models.ErrPostNotFound
 	}
-
 	if post.UserID != userID {
 		return models.ErrPostUnauthorized
 	}
-
 	return nil
 }
